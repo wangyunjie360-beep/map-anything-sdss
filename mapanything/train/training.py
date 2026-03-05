@@ -30,6 +30,7 @@ import mapanything.utils.train_tools as train_tools
 from mapanything.datasets import get_test_data_loader, get_train_data_loader
 from mapanything.models import init_model
 from mapanything.train.losses import *  # noqa
+from mapanything.train.losses_astro import *  # noqa
 from mapanything.utils.inference import loss_of_one_batch_multi_view
 from mapanything.utils.train_tools import NativeScalerWithGradNormCount as NativeScaler
 
@@ -265,14 +266,22 @@ def train(args):
                 )
                 test_stats[test_name] = stats
 
-            # Calculate average test loss median
-            avg_test_loss_med = np.mean(
-                [stats["loss_med"] for stats in test_stats.values()]
-            )
-            test_stats["Average Test Loss Median"] = avg_test_loss_med
+            # Calculate the average validation metric used for model selection.
+            best_metric_key = getattr(args.train_params, "best_metric_key", "loss_med")
+            best_metric_values = [
+                stats[best_metric_key]
+                for stats in test_stats.values()
+                if isinstance(stats, dict) and best_metric_key in stats
+            ]
+            if len(best_metric_values) == 0:
+                best_metric_key = "loss_med"
+                best_metric_values = [stats["loss_med"] for stats in test_stats.values()]
+            avg_best_metric = np.mean(best_metric_values)
+            test_stats[f"Average Validation Metric ({best_metric_key})"] = avg_best_metric
+
             # Save best
-            if avg_test_loss_med < best_so_far:
-                best_so_far = avg_test_loss_med
+            if avg_best_metric < best_so_far:
+                best_so_far = avg_best_metric
                 new_best = True
 
         # Save more stuff

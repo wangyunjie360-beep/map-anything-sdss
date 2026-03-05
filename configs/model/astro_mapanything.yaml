@@ -1,0 +1,29 @@
+defaults:
+  - default
+
+model_str: "astro_mapanything"
+model_config:
+  name: "astro_mapanything"
+  image_size: 224
+  patch_size: 14
+  spec_length: 2048
+  spec_stride: 8
+  embed_dim: 768
+  fusion_num_heads: 12
+  fusion_num_layers: 8
+  spectrum_encoder_layers: 8
+  spectrum_decoder_layers: 6
+  dropout: 0.0
+  image_encoder_name: "dinov2_vitl14"
+  image_encoder_pretrained: True
+  freeze_image_encoder_first_n_blocks: 12
+  dino_offline_mode: True
+  dino_local_repo_path: ${oc.env:DINO_LOCAL_REPO,null}
+  dino_local_checkpoint_path: ${oc.env:DINO_LOCAL_CKPT,null}
+  dino_allow_network_fallback: False
+  use_metadata: True
+  metadata_dim: 4
+
+pretrained: null
+data_norm_type: "identity"
+torch_hub_force_reload: False

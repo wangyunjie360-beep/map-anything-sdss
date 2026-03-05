@@ -1,0 +1,72 @@
+astro_root: /root/wyj/map-anything-sdss/astro_sdss_v2_20gb_curated
+train_manifest: ${dataset.astro_root}/manifest/train_ready_train.jsonl
+val_manifest: ${dataset.astro_root}/manifest/train_ready_val.jsonl
+stats_manifest: ${dataset.train_manifest}
+
+# Fixed two-view setup (image + spectrum).
+num_views: 2
+num_workers: 8
+resolution_train: [224, 224]
+resolution_val: [224, 224]
+principal_point_centered: false
+
+train:
+  variable_num_views: false
+val:
+  variable_num_views: false
+test:
+  variable_num_views: false
+
+train_dataset:
+  "20_000 @ AstroSDSSPairDataset(
+  manifest_path='${dataset.train_manifest}',
+  split='train',
+  use_metadata=True,
+  mask_ratio_image=(0.4, 0.6),
+  mask_ratio_spec=(0.3, 0.5),
+  seed=42,
+  eval_fixed_mask=False,
+  image_size=224,
+  image_patch_size=14,
+  spec_length=2048,
+  spec_span_min=8,
+  spec_span_max=64,
+  modality_probs_stage_b=(0.45, 0.35, 0.20),
+  modality_probs_stage_c=(0.50, 0.30, 0.20),
+  eval_modality_probs=(0.45, 0.35, 0.20),
+  stage_a_epochs=20,
+  stage_b_epochs=80,
+  stage_c_epochs=20,
+  mask_schedule_epochs=120,
+  stats_manifest_path='${dataset.stats_manifest}',
+  num_views=${dataset.num_views},
+  variable_num_views=${dataset.train.variable_num_views},
+  resolution=(224, 224),
+  data_norm_type='identity')"
+
+test_dataset:
+  "2_000 @ AstroSDSSPairDataset(
+  manifest_path='${dataset.val_manifest}',
+  split='val',
+  use_metadata=True,
+  mask_ratio_image=(0.4, 0.6),
+  mask_ratio_spec=(0.3, 0.5),
+  seed=42,
+  eval_fixed_mask=True,
+  image_size=224,
+  image_patch_size=14,
+  spec_length=2048,
+  spec_span_min=8,
+  spec_span_max=64,
+  modality_probs_stage_b=(0.45, 0.35, 0.20),
+  modality_probs_stage_c=(0.50, 0.30, 0.20),
+  eval_modality_probs=(0.45, 0.35, 0.20),
+  stage_a_epochs=20,
+  stage_b_epochs=80,
+  stage_c_epochs=20,
+  mask_schedule_epochs=120,
+  stats_manifest_path='${dataset.stats_manifest}',
+  num_views=${dataset.num_views},
+  variable_num_views=${dataset.val.variable_num_views},
+  resolution=(224, 224),
+  data_norm_type='identity')"

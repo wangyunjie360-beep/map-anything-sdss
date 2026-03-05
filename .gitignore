@@ -3,6 +3,11 @@ outputs/
 checkpoints/
 local/
 wandb/
+/log/
+/logs/
+/weights/
+/data/
+/astro_sdss_v2_20gb_curated/
 data_processing/wai_processing/third_party
 hydra/
 private/
