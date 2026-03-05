@@ -21,6 +21,8 @@ model_config:
   dino_local_repo_path: ${oc.env:DINO_LOCAL_REPO,null}
   dino_local_checkpoint_path: ${oc.env:DINO_LOCAL_CKPT,null}
   dino_allow_network_fallback: False
+  dino_require_local_checkpoint: True
+  dino_fail_on_missing_local_checkpoint: True
   use_metadata: True
   metadata_dim: 4
 

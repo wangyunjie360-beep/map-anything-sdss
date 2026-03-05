@@ -33,6 +33,8 @@ class _AstroImageEncoder(nn.Module):
         dino_local_repo_path: Optional[str] = None,
         dino_local_checkpoint_path: Optional[str] = None,
         dino_allow_network_fallback: bool = True,
+        dino_require_local_checkpoint: bool = True,
+        dino_fail_on_missing_local_checkpoint: bool = True,
     ):
         super().__init__()
         self.image_size = image_size
@@ -46,6 +48,8 @@ class _AstroImageEncoder(nn.Module):
         self.dino_local_repo_path = dino_local_repo_path
         self.dino_local_checkpoint_path = dino_local_checkpoint_path
         self.dino_allow_network_fallback = dino_allow_network_fallback
+        self.dino_require_local_checkpoint = dino_require_local_checkpoint
+        self.dino_fail_on_missing_local_checkpoint = dino_fail_on_missing_local_checkpoint
 
         self.num_tokens_h = image_size // patch_size
         self.num_tokens_w = image_size // patch_size
@@ -78,26 +82,41 @@ class _AstroImageEncoder(nn.Module):
             )
             self.fallback_encoder = nn.TransformerEncoder(layer, num_layers=4)
 
+    def _handle_missing_local_checkpoint(self, reason: str) -> bool:
+        msg = (
+            f"DINOv2 local checkpoint is required but unavailable: {reason}. "
+            f"dino_local_checkpoint_path={self.dino_local_checkpoint_path!r}"
+        )
+        if self.dino_require_local_checkpoint and self.dino_fail_on_missing_local_checkpoint:
+            raise RuntimeError(msg)
+        warnings.warn(msg if self.dino_require_local_checkpoint else reason)
+        return not self.dino_require_local_checkpoint
+
     def _load_local_checkpoint_if_provided(self) -> bool:
         if not self.use_pretrained:
             return True
         ckpt_path = self.dino_local_checkpoint_path
         if not ckpt_path:
-            warnings.warn(
-                "DINOv2 pretrained requested in offline mode, but no local checkpoint path is set. "
-                "Using uninitialized local DINOv2 weights."
+            return self._handle_missing_local_checkpoint(
+                "DINOv2 pretrained requested in offline mode, but no local checkpoint path is set"
             )
-            return True
         if not os.path.isfile(ckpt_path):
-            warnings.warn(
-                f"DINOv2 local checkpoint path does not exist: {ckpt_path}. "
-                "Using uninitialized local DINOv2 weights."
+            return self._handle_missing_local_checkpoint(
+                f"DINOv2 local checkpoint path does not exist: {ckpt_path}"
             )
-            return True
-        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-        state_dict = ckpt["model"] if isinstance(ckpt, dict) and "model" in ckpt else ckpt
-        msg = self.dino.load_state_dict(state_dict, strict=False)
-        warnings.warn(f"Loaded local DINOv2 checkpoint from {ckpt_path}: {msg}")
+        try:
+            ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+            state_dict = (
+                ckpt["model"] if isinstance(ckpt, dict) and "model" in ckpt else ckpt
+            )
+            msg = self.dino.load_state_dict(state_dict, strict=False)
+            print(
+                f"[AstroMapAnything] Loaded local DINOv2 checkpoint from {ckpt_path}: {msg}"
+            )
+        except Exception as exc:
+            return self._handle_missing_local_checkpoint(
+                f"Failed to load local DINOv2 checkpoint at {ckpt_path}: {exc}"
+            )
         return True
 
     def _try_load_dino_from_local_repo(self, encoder_name: str) -> bool:
@@ -117,7 +136,14 @@ class _AstroImageEncoder(nn.Module):
                 source="local",
                 pretrained=False,
             )
-            return self._load_local_checkpoint_if_provided()
+            loaded_ckpt = self._load_local_checkpoint_if_provided()
+            if loaded_ckpt:
+                print(
+                    f"[AstroMapAnything] Loaded DINOv2 backbone from local repo: {repo_path}"
+                )
+            return loaded_ckpt
+        except RuntimeError:
+            raise
         except Exception as exc:
             warnings.warn(f"Failed loading DINOv2 from local repo {repo_path}: {exc}")
             return False
@@ -129,8 +155,18 @@ class _AstroImageEncoder(nn.Module):
             if not hasattr(backbones, encoder_name):
                 return False
             builder = getattr(backbones, encoder_name)
-            self.dino = builder(pretrained=False, img_size=self.image_size, patch_size=self.patch_size)
-            return self._load_local_checkpoint_if_provided()
+            # Keep construction consistent with the local-repo torch.hub path.
+            # The hub builder defaults to the canonical DINOv2 pretrain geometry
+            # (e.g., ViT-L/14 with 518 input => pos_embed length 1370). If we force
+            # img_size here (e.g., 224), loading checkpoints produced via the repo
+            # path can fail with pos_embed shape mismatch.
+            self.dino = builder(pretrained=False)
+            loaded_ckpt = self._load_local_checkpoint_if_provided()
+            if loaded_ckpt:
+                print("[AstroMapAnything] Loaded DINOv2 backbone from bundled local module.")
+            return loaded_ckpt
+        except RuntimeError:
+            raise
         except Exception as exc:
             warnings.warn(f"Failed loading DINOv2 from local module: {exc}")
             return False
@@ -158,6 +194,10 @@ class _AstroImageEncoder(nn.Module):
                 encoder_name,
                 pretrained=self.use_pretrained,
                 force_reload=self.torch_hub_force_reload,
+            )
+            print(
+                f"[AstroMapAnything] Loaded DINOv2 backbone from network source: "
+                f"facebookresearch/dinov2::{encoder_name}"
             )
             dino_dim = getattr(self.dino, "embed_dim", 1024)
             self.token_proj = nn.Linear(dino_dim, self.embed_dim)
@@ -283,6 +323,8 @@ class AstroMapAnything(nn.Module):
         dino_local_repo_path: Optional[str] = None,
         dino_local_checkpoint_path: Optional[str] = None,
         dino_allow_network_fallback: bool = True,
+        dino_require_local_checkpoint: bool = True,
+        dino_fail_on_missing_local_checkpoint: bool = True,
         **kwargs,
     ):
         super().__init__()
@@ -314,6 +356,8 @@ class AstroMapAnything(nn.Module):
             dino_local_repo_path=dino_local_repo_path,
             dino_local_checkpoint_path=dino_local_checkpoint_path,
             dino_allow_network_fallback=dino_allow_network_fallback,
+            dino_require_local_checkpoint=dino_require_local_checkpoint,
+            dino_fail_on_missing_local_checkpoint=dino_fail_on_missing_local_checkpoint,
         )
         self.spectrum_encoder = _AstroSpectrumEncoder(
             spec_length=spec_length,

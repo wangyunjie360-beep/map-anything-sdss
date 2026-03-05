@@ -37,6 +37,8 @@ save_freq: 1
 keep_freq: 10
 # Frequence (number of iterations) to print infos while training (includes tensorboard logging)
 print_freq: 20
+# Reduce train step detail scalars (e.g. train_astro_*) across ranks before writing TensorBoard.
+reduce_train_detail_scalars_across_ranks: True
 # Resume Training from last checkpoint
 resume: True
 # Check for loss instability (stop training if loss exceeds max_loss_value)

@@ -222,6 +222,16 @@ class MulDataset(EasyDataset):
         else:
             return self.dataset[idx // self.multiplicator]
 
+    def set_epoch(self, epoch):
+        """
+        Forward epoch updates to the wrapped dataset.
+
+        Args:
+            epoch (int): The current epoch number.
+        """
+        if hasattr(self.dataset, "set_epoch"):
+            self.dataset.set_epoch(epoch)
+
     @property
     def _resolutions(self):
         """
@@ -314,6 +324,11 @@ class ResizedDataset(EasyDataset):
 
         assert len(self._idxs_mapping) == self.new_size
         assert len(self._idxs_seed_offset) == self.new_size
+
+        # Propagate epoch to the wrapped dataset so downstream samples receive
+        # the true training epoch (e.g. stage scheduling and masking schedule).
+        if hasattr(self.dataset, "set_epoch"):
+            self.dataset.set_epoch(epoch)
 
     def __getitem__(self, idx):
         """

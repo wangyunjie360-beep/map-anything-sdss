@@ -134,6 +134,11 @@ class DynamicBatchDatasetWrapper:
     def __len__(self):
         return len(self.dataset)
 
+    def set_epoch(self, epoch):
+        """Forward epoch updates to the wrapped dataset when available."""
+        if hasattr(self.dataset, "set_epoch"):
+            self.dataset.set_epoch(epoch)
+
     def __getattr__(self, name):
         # Delegate all other attributes to the wrapped dataset
         return getattr(self.dataset, name)

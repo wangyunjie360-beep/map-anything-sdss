@@ -439,6 +439,9 @@ def train_one_epoch(
         )
     header = "Epoch: [{}]".format(epoch)
     accum_iter = args.train_params.accum_iter
+    reduce_train_detail_scalars = bool(
+        getattr(args.train_params, "reduce_train_detail_scalars_across_ranks", True)
+    )
 
     if log_writer is not None:
         print("log_dir: {}".format(log_writer.log_dir))
@@ -484,7 +487,7 @@ def train_one_epoch(
             loss = loss * (
                 2 / n_views
             )  # scale the loss relative to the number of views (base is 2 views)
-        loss_value = float(loss)
+        loss_value = float(loss.detach())
 
         check_instability = not math.isfinite(loss_value) or (
             args.train_params.check_loss_instability
@@ -555,6 +558,13 @@ def train_one_epoch(
             loss_value_reduce = train_tools.all_reduce_mean(
                 loss_value
             )  # MUST BE EXECUTED BY ALL NODES
+            reduced_loss_details = {}
+            for name, val in loss_details.items():
+                reduced_loss_details[name] = (
+                    train_tools.all_reduce_mean(val)
+                    if reduce_train_detail_scalars
+                    else val
+                )
             if log_writer is None:
                 continue
             """
@@ -576,12 +586,11 @@ def train_one_epoch(
                 ]["lr"]
                 log_writer.add_scalar(lr_name, log_lr, epoch_1000x)
             log_writer.add_scalar("train_iter", epoch_1000x, epoch_1000x)
-            for name, val in loss_details.items():
+            for name, val in reduced_loss_details.items():
                 log_writer.add_scalar("train_" + name, val, epoch_1000x)
 
-    # # Gather the stats from all processes
-    # metric_logger.synchronize_between_processes()
-    # print("Averaged stats:", metric_logger)
+    # Gather the stats from all processes so epoch-level logs are globally valid under DDP.
+    metric_logger.synchronize_between_processes()
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
@@ -657,11 +666,10 @@ def test_one_epoch(
             loss_value = loss_value * (
                 2 / n_views
             )  # scale the loss relative to the number of views (base is 2 views)
-        metric_logger.update(loss=float(loss_value), **loss_details)
+        metric_logger.update(loss=float(loss_value.detach()), **loss_details)
 
-    # # Gather the stats from all processes
-    # metric_logger.synchronize_between_processes()
-    # print("Averaged stats:", metric_logger)
+    # Gather the stats from all processes so validation logs are globally valid under DDP.
+    metric_logger.synchronize_between_processes()
 
     aggs = [("avg", "global_avg"), ("med", "median")]
     results = {

@@ -16,6 +16,7 @@ eval_freq: 1
 save_freq: 1
 keep_freq: 10
 print_freq: 2
+reduce_train_detail_scalars_across_ranks: True
 resume: True
 check_loss_instability: True
 max_loss_value: 1e4
