@@ -1,0 +1,46 @@
+defaults:
+  - default
+
+model_str: "astro_mapanything_v2"
+model_config:
+  name: "astro_mapanything_v2"
+  image_size: 224
+  patch_size: 7
+  spec_length: 2048
+  spec_stride: 2
+  embed_dim: 768
+  fusion_num_heads: 12
+  fusion_num_layers: 8
+  spectrum_encoder_layers: 8
+  spectrum_decoder_layers: 6
+  dropout: 0.0
+  image_encoder_name: "dinov2_vitl14"
+  image_encoder_pretrained: True
+  freeze_image_encoder_first_n_blocks: 12
+  image_in_chans: 5
+  num_register_tokens: 4
+  enable_nuisance_head: True
+  nuisance_output_dim: 11
+  shared_pooling_type: "attention"
+  register_usage: "nuisance_only"
+  dino_offline_mode: True
+  dino_local_repo_path: ${oc.env:DINO_LOCAL_REPO,null}
+  dino_local_checkpoint_path: ${oc.env:DINO_LOCAL_CKPT,null}
+  dino_allow_network_fallback: False
+  dino_require_local_checkpoint: True
+  dino_fail_on_missing_local_checkpoint: True
+  dino_patch7_migration: True
+  dino_patch7_init_from_vitl14: True
+  dino_patch_kernel_interp_mode: "bilinear"
+  dino_pos_embed_interp_mode: "bicubic"
+  enable_fusion_gradient_checkpointing: True
+  contrast_proj_dim: 256
+  use_metadata: True
+  metadata_dim: 4
+  enable_aux_spectrum_head: True
+  aux_spectrum_channels: 2
+  enable_student_teacher_distill: True
+
+pretrained: null
+data_norm_type: "identity"
+torch_hub_force_reload: False

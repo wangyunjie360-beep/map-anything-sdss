@@ -1,0 +1,32 @@
+defaults:
+  - default
+
+seed: 42
+max_num_of_imgs_per_gpu: 16
+accum_iter: 4
+epochs: 120
+lr: 2e-4
+min_lr: 2e-7
+warmup_epochs: 5
+weight_decay: 0.05
+amp: 1
+amp_dtype: "bf16"
+disable_cudnn_benchmark: true
+freeze_val_samples_across_all_epochs: true
+eval_freq: 1
+save_freq: 1
+keep_freq: 10
+print_freq: 2
+reduce_train_detail_scalars_across_ranks: True
+resume: True
+check_loss_instability: True
+max_loss_value: 1e4
+best_metric_key: "astro_metric_backbone_avg"
+
+submodule_configs:
+  image_encoder:
+    lr: 5e-5
+    min_lr: 5e-8
+    warmup_epochs: ${train_params.warmup_epochs}
+    weight_decay: ${train_params.weight_decay}
+    schedule_type: ${train_params.schedule_type}

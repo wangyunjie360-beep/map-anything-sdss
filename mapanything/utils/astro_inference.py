@@ -29,24 +29,12 @@ def _to_batched_tensor(
     return x.to(device=device, dtype=torch.float32)
 
 
-@torch.no_grad()
-def predict_missing_modality(
+def _build_astro_views(
     model: torch.nn.Module,
-    image: Optional[Any] = None,
-    spectrum: Optional[Any] = None,
-    metadata: Optional[Any] = None,
-    return_self_recon: bool = False,
-) -> Dict[str, torch.Tensor]:
-    """
-    Predict missing astronomy modality using AstroMapAnything.
-
-    Args:
-        model: AstroMapAnything model.
-        image: Optional image tensor of shape (5, 224, 224) or (B, 5, 224, 224).
-        spectrum: Optional spectrum tensor of shape (4, 2048) or (B, 4, 2048).
-        metadata: Optional metadata tensor of shape (4,) or (B, 4).
-        return_self_recon: If True, also return reconstructions for available modalities.
-    """
+    image: Optional[Any],
+    spectrum: Optional[Any],
+    metadata: Optional[Any],
+):
     if image is None and spectrum is None:
         raise ValueError("At least one modality must be provided.")
 
@@ -61,13 +49,16 @@ def predict_missing_modality(
         batch_size = spectrum_t.shape[0]
 
     if image_t is None:
-        image_t = torch.zeros((batch_size, 5, 224, 224), device=model_device, dtype=torch.float32)
+        image_channels = int(getattr(model, "image_in_chans", 5))
+        image_size = int(getattr(model, "image_size", 224))
+        image_t = torch.zeros((batch_size, image_channels, image_size, image_size), device=model_device, dtype=torch.float32)
         image_available = torch.zeros((batch_size,), dtype=torch.bool, device=model_device)
     else:
         image_available = torch.ones((batch_size,), dtype=torch.bool, device=model_device)
 
     if spectrum_t is None:
-        spectrum_t = torch.zeros((batch_size, 4, 2048), device=model_device, dtype=torch.float32)
+        spec_length = int(getattr(model, "spec_length", 2048))
+        spectrum_t = torch.zeros((batch_size, 4, spec_length), device=model_device, dtype=torch.float32)
         spectrum_available = torch.zeros((batch_size,), dtype=torch.bool, device=model_device)
     else:
         spectrum_available = torch.ones((batch_size,), dtype=torch.bool, device=model_device)
@@ -110,6 +101,68 @@ def predict_missing_modality(
             "meta_valid": meta_valid,
         },
     ]
+    return views, image_available, spectrum_available
+
+
+@torch.no_grad()
+def extract_backbone_features(
+    model: torch.nn.Module,
+    image: Optional[Any] = None,
+    spectrum: Optional[Any] = None,
+    metadata: Optional[Any] = None,
+    return_tokens: bool = False,
+) -> Dict[str, torch.Tensor]:
+    views, _, _ = _build_astro_views(model, image=image, spectrum=spectrum, metadata=metadata)
+    model_was_training = model.training
+    model.eval()
+    if hasattr(model, "encode"):
+        out = model.encode(views, return_tokens=return_tokens)
+    else:
+        preds = model(views, mode="infer")
+        pred = preds[0]
+        out = {
+            key: pred[key]
+            for key in (
+                "z_img",
+                "z_spec",
+                "z_shared",
+                "z_nuis",
+                "latent_image_proj",
+                "latent_spectrum_proj",
+                "latent_shared_proj",
+                "pred_nuisance",
+            )
+            if key in pred
+        }
+    if model_was_training:
+        model.train()
+    return out
+
+
+@torch.no_grad()
+def predict_missing_modality(
+    model: torch.nn.Module,
+    image: Optional[Any] = None,
+    spectrum: Optional[Any] = None,
+    metadata: Optional[Any] = None,
+    return_self_recon: bool = False,
+) -> Dict[str, torch.Tensor]:
+    """
+    Predict missing astronomy modality using AstroMapAnything.
+
+    Args:
+        model: AstroMapAnything model.
+        image: Optional image tensor of shape (5, 224, 224) or (B, 5, 224, 224).
+        spectrum: Optional spectrum tensor of shape (4, 2048) or (B, 4, 2048).
+        metadata: Optional metadata tensor of shape (4,) or (B, 4).
+        return_self_recon: If True, also return reconstructions for available modalities.
+    """
+    views, image_available, spectrum_available = _build_astro_views(
+        model,
+        image=image,
+        spectrum=spectrum,
+        metadata=metadata,
+    )
 
     model_was_training = model.training
     model.eval()

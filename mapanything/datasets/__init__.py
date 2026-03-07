@@ -25,6 +25,7 @@ from mapanything.datasets.wai.spring import SpringWAI  # noqa
 from mapanything.datasets.wai.tav2_wb import TartanAirV2WBWAI  # noqa
 from mapanything.datasets.wai.unrealstereo4k import UnrealStereo4KWAI  # noqa
 from mapanything.datasets.astro.sdss_pair import AstroSDSSPairDataset  # noqa
+from mapanything.datasets.astro.sdss_pair_v2 import AstroSDSSPairDatasetV2  # noqa
 from mapanything.utils.train_tools import get_rank, get_world_size
 
 

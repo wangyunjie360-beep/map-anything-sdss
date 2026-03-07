@@ -24,7 +24,7 @@ from mapanything.models.mapanything import (
     MapAnythingAblations,
     ModularDUSt3R,
 )
-from mapanything.models.astro_mapanything import AstroMapAnything
+from mapanything.models.astro_mapanything import AstroMapAnything, AstroMapAnythingV2
 
 # Suppress DINOv2 warnings
 logging.getLogger("dinov2").setLevel(logging.WARNING)
@@ -149,6 +149,9 @@ MODEL_CONFIGS = {
     },
     "astro_mapanything": {
         "class": AstroMapAnything,
+    },
+    "astro_mapanything_v2": {
+        "class": AstroMapAnythingV2,
     },
     "mapanything_ablations": {
         "class": MapAnythingAblations,

@@ -31,6 +31,7 @@ from mapanything.datasets import get_test_data_loader, get_train_data_loader
 from mapanything.models import init_model
 from mapanything.train.losses import *  # noqa
 from mapanything.train.losses_astro import *  # noqa
+from mapanything.train.losses_astro_v2 import *  # noqa
 from mapanything.utils.inference import loss_of_one_batch_multi_view
 from mapanything.utils.train_tools import NativeScalerWithGradNormCount as NativeScaler
 

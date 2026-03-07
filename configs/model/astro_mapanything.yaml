@@ -5,9 +5,9 @@ model_str: "astro_mapanything"
 model_config:
   name: "astro_mapanything"
   image_size: 224
-  patch_size: 14
+  patch_size: 7
   spec_length: 2048
-  spec_stride: 8
+  spec_stride: 2
   embed_dim: 768
   fusion_num_heads: 12
   fusion_num_layers: 8
@@ -23,6 +23,12 @@ model_config:
   dino_allow_network_fallback: False
   dino_require_local_checkpoint: True
   dino_fail_on_missing_local_checkpoint: True
+  dino_patch7_migration: True
+  dino_patch7_init_from_vitl14: True
+  dino_patch_kernel_interp_mode: "bilinear"
+  dino_pos_embed_interp_mode: "bicubic"
+  enable_fusion_gradient_checkpointing: True
+  contrast_proj_dim: 256
   use_metadata: True
   metadata_dim: 4
 

@@ -1,0 +1,158 @@
+machine:
+  root_data_dir: ???
+  mapanything_dataset_metadata_dir: ???
+  root_pretrained_checkpoints_dir: ???
+  root_experiments_dir: ???
+  root_uniception_pretrained_checkpoints_dir: ???
+  external_benchmark_data_root_data_dir: ???
+model:
+  model_str: astro_mapanything_v2
+  model_config:
+    pretrained_checkpoint_path: null
+    load_specific_pretrained_submodules: false
+    specific_pretrained_submodules: []
+    name: astro_mapanything_v2
+    image_size: 224
+    patch_size: 7
+    spec_length: 2048
+    spec_stride: 2
+    embed_dim: 768
+    fusion_num_heads: 12
+    fusion_num_layers: 8
+    spectrum_encoder_layers: 8
+    spectrum_decoder_layers: 6
+    dropout: 0.0
+    image_encoder_name: dinov2_vitl14
+    image_encoder_pretrained: true
+    freeze_image_encoder_first_n_blocks: 12
+    image_in_chans: 5
+    num_register_tokens: 4
+    enable_nuisance_head: true
+    nuisance_output_dim: 11
+    shared_pooling_type: attention
+    register_usage: nuisance_only
+    dino_offline_mode: true
+    dino_local_repo_path: ${oc.env:DINO_LOCAL_REPO,null}
+    dino_local_checkpoint_path: ${oc.env:DINO_LOCAL_CKPT,null}
+    dino_allow_network_fallback: false
+    dino_require_local_checkpoint: true
+    dino_fail_on_missing_local_checkpoint: true
+    dino_patch7_migration: true
+    dino_patch7_init_from_vitl14: true
+    dino_patch_kernel_interp_mode: bilinear
+    dino_pos_embed_interp_mode: bicubic
+    enable_fusion_gradient_checkpointing: true
+    contrast_proj_dim: 256
+    use_metadata: true
+    metadata_dim: 4
+    enable_aux_spectrum_head: true
+    aux_spectrum_channels: 2
+    enable_student_teacher_distill: true
+  pretrained: null
+  data_norm_type: identity
+  torch_hub_force_reload: false
+dataset:
+  astro_root: /root/wyj/map-anything-sdss/astro_sdss_v2_20gb_curated
+  train_manifest: ${dataset.astro_root}/manifest/train_ready_train.jsonl
+  val_manifest: ${dataset.astro_root}/manifest/train_ready_val.jsonl
+  stats_manifest: ${dataset.train_manifest}
+  stats_cache_path: ${dataset.astro_root}/manifest/astro_train_norm_stats_v2.json
+  num_views: 2
+  num_workers: 8
+  resolution_train:
+  - 224
+  - 224
+  resolution_val:
+  - 224
+  - 224
+  principal_point_centered: false
+  train:
+    variable_num_views: false
+  val:
+    variable_num_views: false
+  test:
+    variable_num_views: false
+  train_dataset: 4_000 @ AstroSDSSPairDatasetV2( manifest_path='${dataset.train_manifest}',
+    split='train', use_metadata=True, mask_ratio_image=(0.0, 0.0), mask_ratio_spec=(0.15,
+    0.35), seed=42, eval_fixed_mask=False, image_size=224, image_patch_size=7, spec_length=2048,
+    spec_span_min=8, spec_span_max=48, modality_probs_stage_b=(0.25, 0.15, 0.60),
+    modality_probs_stage_c=(0.30, 0.15, 0.55), eval_modality_probs=(0.25, 0.15, 0.60),
+    stage_a_epochs=20, stage_b_epochs=80, stage_c_epochs=20, mask_schedule_epochs=120,
+    stats_manifest_path='${dataset.stats_manifest}', stats_cache_path='${dataset.stats_cache_path}',
+    num_views=${dataset.num_views}, variable_num_views=${dataset.train.variable_num_views},
+    resolution=(224, 224), data_norm_type='identity', enable_band_masking=True, band_mask_count_range=(0,
+    1), enable_sparse_patch_dropout=True, sparse_patch_dropout_ratio=(0.02, 0.08),
+    enable_spectrum_input_masking=True, use_raw_spectrum_aux_targets=True, raw_spectrum_aux_keys=('flux_obs',
+    'flux_rest'))
+  test_dataset: 512 @ AstroSDSSPairDatasetV2( manifest_path='${dataset.val_manifest}',
+    split='val', use_metadata=True, mask_ratio_image=(0.0, 0.0), mask_ratio_spec=(0.15,
+    0.35), seed=42, eval_fixed_mask=True, image_size=224, image_patch_size=7, spec_length=2048,
+    spec_span_min=8, spec_span_max=48, modality_probs_stage_b=(0.25, 0.15, 0.60),
+    modality_probs_stage_c=(0.30, 0.15, 0.55), eval_modality_probs=(0.25, 0.15, 0.60),
+    stage_a_epochs=20, stage_b_epochs=80, stage_c_epochs=20, mask_schedule_epochs=120,
+    stats_manifest_path='${dataset.stats_manifest}', stats_cache_path='${dataset.stats_cache_path}',
+    num_views=${dataset.num_views}, variable_num_views=${dataset.val.variable_num_views},
+    resolution=(224, 224), data_norm_type='identity', enable_band_masking=True, band_mask_count_range=(0,
+    1), enable_sparse_patch_dropout=True, sparse_patch_dropout_ratio=(0.02, 0.08),
+    enable_spectrum_input_masking=True, use_raw_spectrum_aux_targets=True, raw_spectrum_aux_keys=('flux_obs',
+    'flux_rest'))
+loss:
+  train_criterion: AstroBiModalSelfSupLossV2(w_i2s=1.00, w_spec_self=0.60, w_img_self=0.10,
+    w_align=0.25, w_cons=0.20, w_nuis=0.10, w_disentangle=0.05, w_aux_i2s=0.25, w_aux_spec_self=0.10,
+    use_uncertainty_nll=False, use_uncertainty_nll_self=True, use_uncertainty_nll_cross=False,
+    use_peak_weighting=True, peak_weight_alpha=2.0, peak_weight_clip=6.0, grad_loss_weight_i2s=0.35,
+    grad_loss_weight_spec_self=0.20, peak_quantile_monitor=0.90, logvar_min=-6.0,
+    logvar_max=2.0, align_temperature=0.07, charbonnier_eps=1e-3, huber_delta=1.0,
+    stage_a_epochs=20, enable_aux_spectrum_loss=True, aux_channel_weights=(0.5, 1.0),
+    enable_latent_self_distill=True, w_distill_image=0.05, w_distill_spectrum=0.05,
+    spec_channel_weights=(1.0, 1.0, 0.8, 0.9))
+  test_criterion: AstroBiModalSelfSupLossV2(w_i2s=1.00, w_spec_self=0.60, w_img_self=0.10,
+    w_align=0.25, w_cons=0.20, w_nuis=0.10, w_disentangle=0.05, w_aux_i2s=0.25, w_aux_spec_self=0.10,
+    use_uncertainty_nll=False, use_uncertainty_nll_self=True, use_uncertainty_nll_cross=False,
+    use_peak_weighting=True, peak_weight_alpha=2.0, peak_weight_clip=6.0, grad_loss_weight_i2s=0.35,
+    grad_loss_weight_spec_self=0.20, peak_quantile_monitor=0.90, logvar_min=-6.0,
+    logvar_max=2.0, align_temperature=0.07, charbonnier_eps=1e-3, huber_delta=1.0,
+    stage_a_epochs=0, enable_aux_spectrum_loss=True, aux_channel_weights=(0.5, 1.0),
+    enable_latent_self_distill=True, w_distill_image=0.05, w_distill_spectrum=0.05,
+    spec_channel_weights=(1.0, 1.0, 0.8, 0.9))
+train_params:
+  seed: 42
+  max_num_of_imgs_per_gpu: 16
+  accum_iter: 4
+  epochs: 120
+  lr: 0.0002
+  min_lr: 2.0e-07
+  warmup_epochs: 5
+  weight_decay: 0.05
+  schedule_type: linear_warmup_half_cycle_cosine_decay
+  warn_not_in_submodule: false
+  submodule_configs:
+    image_encoder:
+      lr: 5.0e-05
+      min_lr: 5.0e-08
+      warmup_epochs: ${train_params.warmup_epochs}
+      weight_decay: ${train_params.weight_decay}
+      schedule_type: ${train_params.schedule_type}
+  amp: 1
+  amp_dtype: bf16
+  disable_cudnn_benchmark: true
+  freeze_val_samples_across_all_epochs: true
+  eval_freq: 1
+  save_freq: 1
+  keep_freq: 10
+  print_freq: 2
+  reduce_train_detail_scalars_across_ranks: true
+  resume: false
+  check_loss_instability: true
+  max_loss_value: 10000.0
+  best_metric_key: astro_metric_backbone_avg
+distributed:
+  world_size: 1
+  local_rank: -1
+  dist_url: env://
+output_dir: ${hydra:run.dir}
+root_data_dir: ${machine.root_data_dir}
+mapanything_dataset_metadata_dir: ${machine.mapanything_dataset_metadata_dir}
+root_pretrained_checkpoints_dir: ${machine.root_pretrained_checkpoints_dir}
+root_experiments_dir: ${machine.root_experiments_dir}
+root_uniception_pretrained_checkpoints_dir: ${machine.root_uniception_pretrained_checkpoints_dir}

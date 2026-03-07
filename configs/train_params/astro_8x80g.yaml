@@ -2,7 +2,8 @@ defaults:
   - default
 
 seed: 42
-max_num_of_imgs_per_gpu: 128
+max_num_of_imgs_per_gpu: 16
+accum_iter: 4
 epochs: 120
 lr: 2e-4
 min_lr: 2e-7

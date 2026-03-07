@@ -13,8 +13,8 @@ RUN_NAME="${RUN_NAME:-astro_sdss_$(date +%Y%m%d_%H%M%S)}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-${REPO_DIR}/astro_sdss_v2_20gb_curated/experiments}"
 HYDRA_RUN_DIR="${HYDRA_RUN_DIR:-${OUTPUT_ROOT}/${RUN_NAME}}"
 
-# For num_views=2, max_num_of_imgs_per_gpu=2 means ~1 paired sample per GPU.
-MAX_NUM_OF_IMGS_PER_GPU="${MAX_NUM_OF_IMGS_PER_GPU:-2}"
+# For num_views=2, max_num_of_imgs_per_gpu=16 means ~8 paired samples per GPU.
+MAX_NUM_OF_IMGS_PER_GPU="${MAX_NUM_OF_IMGS_PER_GPU:-16}"
 DINO_STRICT_CHECK="${DINO_STRICT_CHECK:-1}"
 
 mkdir -p "${HYDRA_RUN_DIR}"
